@@ -55,6 +55,14 @@ class TwoLayerNet(object):
         # weights and biases using the keys 'W2' and 'b2'.                         #
         ############################################################################
 
+        self.params['W1'] = weight_scale * np.random.randn(input_dim, hidden_dim)
+        self.params['W2'] = weight_scale * np.random.randn(hidden_dim, num_classes)
+
+        self.params['b1'] = np.zeros(hidden_dim)
+        self.params['b2'] = np.zeros(num_classes)
+
+        
+        
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -84,6 +92,10 @@ class TwoLayerNet(object):
         # class scores for X and storing them in the scores variable.              #
         ############################################################################
 
+        x1, cache1 = affine_relu_forward(X, self.params['W1'], self.params['b1'])
+
+        scores, cache2 = affine_forward(x1, self.params['W2'], self.params['b2'])
+
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -103,6 +115,18 @@ class TwoLayerNet(object):
         # automated tests, make sure that your L2 regularization includes a factor #
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
+
+        loss, dl = softmax_loss(scores, y)
+        loss += 0.5 * self.reg * (np.sum(self.params['W1'] * self.params['W1']) + np.sum(self.params['W2'] * self.params['W2']))
+        
+        dx2, dw2, db2 = affine_backward(dl, cache2)
+
+        dx1, dw1, db1 = affine_relu_backward(dx2, cache1)
+        
+        grads['W1'] = dw1 * (1 + self.reg)
+        grads['W2'] = dw2 * (1 + self.reg)
+        grads['b1'] = db1
+        grads['b2'] = db2
 
         ############################################################################
         #                             END OF YOUR CODE                             #
