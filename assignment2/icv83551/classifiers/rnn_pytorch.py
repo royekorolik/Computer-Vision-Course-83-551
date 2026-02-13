@@ -138,7 +138,20 @@ class CaptioningRNN:
         #                                                                          #
         # You also don't have to implement the backward pass.                      #
         ############################################################################
-        # 
+        
+        
+
+        h0 = affine_forward(features, W_proj, b_proj)
+        x = word_embedding_forward(captions_in, W_embed)
+        
+        if self.cell_type == "rnn":
+            h = rnn_forward(x, h0, Wx, Wh, b)
+
+        h = h.to(W_vocab.dtype)
+
+        scores = temporal_affine_forward(h, W_vocab, b_vocab)
+
+        loss = temporal_softmax_loss(scores, captions_out.long(), mask)   
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
