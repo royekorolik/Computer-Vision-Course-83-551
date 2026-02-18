@@ -88,7 +88,16 @@ class CaptioningTransformer(nn.Module):
         #  3) Finally, apply the decoder features on the text & image embeddings   #
         #     along with the tgt_mask. Project the output to scores per token      #
         ############################################################################
+        vp = self.visual_projection(features).unsqueeze(1)
+        mask = torch.tril(torch.ones((T, T)))
 
+        emb = self.embedding(captions)
+        pe = self.positional_encoding(emb)
+
+        out = self.transformer(pe, vp, tgt_mask=mask)
+
+        scores = self.output(out)
+        
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -240,7 +249,11 @@ class VisionTransformer(nn.Module):
         #    You may find torch.mean useful.                                      #
         # 5. Feed it through a linear layer to produce class logits.              #
         ############################################################################
-
+        emb = self.patch_embed(x)
+        emb_pe = self.positional_encoding(emb)
+        log = self.transformer(emb_pe)
+        log_mean = torch.mean(log, dim=1)
+        logits = self.head(log_mean)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
