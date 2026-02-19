@@ -180,7 +180,11 @@ class Unet(nn.Module):
             # Make sure to exactly follow this structure of ModuleList in order to
             # load a pretrained checkpoint.
             ##################################################################
+            res_1 = ResnetBlock(dim_in, dim_in, context_dim)
+            res_2 = ResnetBlock(dim_in, dim_in, context_dim)
+            down = Downsample(dim_in, dim_out)
 
+            down_block = nn.ModuleList([res_1, res_2, down])
             ##################################################################
             self.downs.append(down_block)
 
@@ -204,7 +208,11 @@ class Unet(nn.Module):
             # Don't forget to account for the skip connections by having 2 x dim_out
             # channels at the input of both ResnetBlocks.
             ##################################################################
-
+            up = Upsample(dim_in, dim_out)
+            up_res_1 = ResnetBlock(2 * dim_out, dim_out, context_dim)
+            up_res_2 = ResnetBlock(2 * dim_out, dim_out, context_dim)
+            
+            up_block = nn.ModuleList([up, up_res_1, up_res_2])
             self.ups.append(up_block)
             ##################################################################
 
@@ -226,7 +234,9 @@ class Unet(nn.Module):
         # You will have to call self.forward two times.
         # For unconditional sampling, pass None in`text_emb`.
         ##################################################################
-
+        empty_kawrgs = copy.deepcopy(model_kwargs)
+        empty_kawrgs["text_emb"] = None
+        x = (cfg_scale + 1) * self.forward(x, time, model_kwargs) - cfg_scale * self.forward(x, time, empty_kawrgs)
         ##################################################################
 
         return x
@@ -281,7 +291,25 @@ class Unet(nn.Module):
         #      skip connection from the downsampling path.
         #    - Make sure to pass the context to each ResNet block.
         ##################################################################
+        down_cont = []
 
+        for down_res_1, down_res_2, down in self.downs:
+            x = down_res_1(x, context)
+            down_cont.append(x)
+            x = down_res_2(x, context)
+            down_cont.append(x)
+            x = down(x)
+
+        x = self.mid_block1(x, context)
+        x = self.mid_block2(x, context)
+
+        i = len(down_cont) - 1
+        for up, up_res_1, up_res_2 in self.ups:
+            x = up(x)
+            x = up_res_1(torch.cat((x, down_cont[i]), dim=1), context)
+            i -= 1
+            x = up_res_2(torch.cat((x, down_cont[i]), dim=1), context)
+            i -= 1
         ##################################################################
 
         # Final block
